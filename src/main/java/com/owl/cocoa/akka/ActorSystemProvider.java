@@ -1,4 +1,4 @@
-package com.owl.coacoa.akka;
+package com.owl.cocoa.akka;
 
 import akka.actor.ActorSystem;
 import akka.actor.ExtendedActorSystem;

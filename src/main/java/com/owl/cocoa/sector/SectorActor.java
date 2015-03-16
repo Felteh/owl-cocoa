@@ -1,4 +1,4 @@
-package com.owl.coacoa.sector;
+package com.owl.cocoa.sector;
 
 import akka.actor.UntypedActor;
 

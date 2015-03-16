@@ -1,8 +1,8 @@
-package com.owl.coacoa;
+package com.owl.cocoa;
 
 import akka.actor.ActorSystem;
 import com.google.inject.AbstractModule;
-import com.owl.coacoa.akka.ActorSystemProvider;
+import com.owl.cocoa.akka.ActorSystemProvider;
 
 public class Module extends AbstractModule {
 

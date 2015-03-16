@@ -1,4 +1,4 @@
-package com.owl.coacoa;
+package com.owl.cocoa;
 
 import com.googlecode.guicebehave.Modules;
 import com.googlecode.guicebehave.Story;

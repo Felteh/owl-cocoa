@@ -1,5 +1,6 @@
-package com.owl.coacoa;
+package com.owl.cocoa;
 
+import com.owl.cocoa.Module;
 import com.google.inject.AbstractModule;
 import com.google.inject.util.Modules;
 
