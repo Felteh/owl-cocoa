@@ -4,9 +4,11 @@ import akka.actor.UntypedActor;
 
 public class SectorActor extends UntypedActor {
 
+    public static final String START = "start";
+
     @Override
     public void onReceive(Object o) throws Exception {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        System.out.println("Sector:" + o);
     }
 
 }
