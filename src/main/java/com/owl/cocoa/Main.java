@@ -61,7 +61,7 @@ public class Main extends Application {
                 for (Entry<String, ShipPosition> ship : a.shipPositions.entrySet()) {
                     Group g = shipGroups.get(ship.getKey());
                     if (g == null) {
-                        Sphere sphere = new Sphere(50, 25);
+                        Sphere sphere = new Sphere(5, 5);
                         g = new Group(sphere);
                         root.getChildren().add(g);
                         shipGroups.put(ship.getKey(), g);
