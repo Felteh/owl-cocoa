@@ -53,7 +53,7 @@ public class Main extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), (ev) -> {
+        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(5), (ev) -> {
             List<SceneData> toRender = new ArrayList<>();
             queue.drainTo(toRender);
 

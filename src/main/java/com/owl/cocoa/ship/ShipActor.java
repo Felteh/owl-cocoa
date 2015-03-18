@@ -33,14 +33,14 @@ public class ShipActor extends UntypedActor {
 
     private void start() {
         cancellable = this.context().system().scheduler().schedule(Duration.Zero(),
-                                                                   Duration.create(50, TimeUnit.MILLISECONDS), this.getSelf(), TICK,
+                                                                   Duration.create(20, TimeUnit.MILLISECONDS), this.getSelf(), TICK,
                                                                    this.context().system().dispatcher(), null);
     }
 
     private void tick() {
-        double x = Math.random() * 100;
-        double y = Math.random() * 100;
-        double z = Math.random() * 100;
+        double x = position.x + 1;
+        double y = position.y + 1;
+        double z = position.z + 1;
         position = new ShipPosition(x, y, z);
     }
 
