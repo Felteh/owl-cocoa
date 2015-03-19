@@ -6,21 +6,24 @@ import java.util.Map;
 public class Inventory {
 
     public final String objectName;
+    public final Double cash;
     public final Integer maxInventory;
     public final Integer totalInventory;
     public final Map<Item, Integer> inventory;
     public final Map<Item, Double> price;
 
-    private Inventory(String objectName, Integer maxInventory, Integer totalInventory, Map<Item, Integer> inventory, Map<Item, Double> price) {
+    private Inventory(String objectName, Double cash, Integer maxInventory, Integer totalInventory, Map<Item, Integer> inventory, Map<Item, Double> price) {
         this.objectName = objectName;
+        this.cash = cash;
         this.maxInventory = maxInventory;
         this.totalInventory = totalInventory;
         this.inventory = inventory;
         this.price = price;
     }
 
-    public Inventory(String objectName, Integer maxInventory) {
+    public Inventory(String objectName, Double cash, Integer maxInventory) {
         this.objectName = objectName;
+        this.cash = cash;
         this.maxInventory = maxInventory;
         this.totalInventory = 0;
         this.inventory = new HashMap<>();
@@ -40,11 +43,11 @@ public class Inventory {
         if (price.get(item) == null) {
             price.put(item, item.minPrice + ((item.maxPrice - item.minPrice) / 2));
         }
-        return new Inventory(objectName, maxInventory, sumInv, inventory, price);
+        return new Inventory(objectName, cash, maxInventory, sumInv, inventory, price);
     }
 
     public Inventory withInventory(Map<Item, Integer> inventory) {
-        return new Inventory(objectName, 0, 0, inventory, price);
+        return new Inventory(objectName, 0d, 0, 0, inventory, price);
     }
 
     public Inventory withLowerPrice(Item item) {
@@ -56,7 +59,7 @@ public class Inventory {
                 p = item.minPrice;
             }
             price.put(item, p);
-            return new Inventory(objectName, maxInventory, totalInventory, inventory, price);
+            return new Inventory(objectName, cash, maxInventory, totalInventory, inventory, price);
         } else {
             return this;
         }
@@ -71,15 +74,19 @@ public class Inventory {
                 p = item.maxPrice;
             }
             price.put(item, p);
-            return new Inventory(objectName, maxInventory, totalInventory, inventory, price);
+            return new Inventory(objectName, cash, maxInventory, totalInventory, inventory, price);
         } else {
             return this;
         }
     }
 
+    public Inventory withCash(Double cash) {
+        return new Inventory(objectName, cash, maxInventory, totalInventory, inventory, price);
+    }
+
     @Override
     public String toString() {
-        return "Inventory{" + "objectName=" + objectName + ", maxInventory=" + maxInventory + ", totalInventory=" + totalInventory + ", inventory=" + inventory + ", price=" + price + '}';
+        return "Inventory{" + "objectName=" + objectName + ", cash=" + cash + ", maxInventory=" + maxInventory + ", totalInventory=" + totalInventory + ", inventory=" + inventory + ", price=" + price + '}';
     }
 
 }

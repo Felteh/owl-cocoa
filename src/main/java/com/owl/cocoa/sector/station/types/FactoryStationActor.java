@@ -7,8 +7,8 @@ import com.owl.cocoa.sector.station.StationActor;
 
 public class FactoryStationActor extends StationActor {
 
-    private static final Item CONSUMPTION_ITEM = Item.WHEAT;
-    private static final Item PRODUCTION_ITEM = Item.GOLD;
+    private static final Item CONSUMPTION_ITEM = Item.COCOA;
+    private static final Item PRODUCTION_ITEM = Item.CHOCOLATE;
     private static final Integer TICK_INV_PRODUCTION_AMOUNT = 2;
     private static final Integer TICK_INV_CONSUMPTION_AMOUNT = 30;
 
@@ -34,6 +34,7 @@ public class FactoryStationActor extends StationActor {
 
                 inventory = inventory.withItem(CONSUMPTION_ITEM, consumptionQ);
                 inventory = inventory.withItem(PRODUCTION_ITEM, productionQ);
+                LOG.info(objectName + " PRODUCED " + TICK_INV_PRODUCTION_AMOUNT + " CHOCOLATE!!!!!");
             }
         } else {
             inventory = inventory.withIncreasePrice(CONSUMPTION_ITEM);

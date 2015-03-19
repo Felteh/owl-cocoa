@@ -7,7 +7,7 @@ import com.owl.cocoa.sector.station.StationActor;
 
 public class ProducingStationActor extends StationActor {
 
-    private static final Item PRODUCTION_ITEM = Item.WHEAT;
+    private static final Item PRODUCTION_ITEM = Item.COCOA;
     private static final Integer TICK_INV_AMOUNT = 10;
 
     @Override

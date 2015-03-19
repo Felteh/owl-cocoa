@@ -125,11 +125,17 @@ public class Main extends Application {
         stations.add(akka.actorOf(Props.create(ProducingStationActor.class), "station2"));
         stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station3"));
         stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station4"));
+        stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station5"));
+        stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station6"));
+        stations.add(akka.actorOf(Props.create(ProducingStationActor.class), "station7"));
 
-        stations.get(0).tell(new SpacePosition(null, "sector1").withPosition(-250, 400, 0), ActorRef.noSender());
+        stations.get(0).tell(new SpacePosition(null, "sector1").withPosition(-250, 0, 0), ActorRef.noSender());
         stations.get(1).tell(new SpacePosition(null, "sector1").withPosition(300, -100, 200), ActorRef.noSender());
         stations.get(2).tell(new SpacePosition(null, "sector1").withPosition(300, 200, 100), ActorRef.noSender());
         stations.get(3).tell(new SpacePosition(null, "sector1").withPosition(-150, -200, 75), ActorRef.noSender());
+        stations.get(4).tell(new SpacePosition(null, "sector1").withPosition(-50, 00, 0), ActorRef.noSender());
+        stations.get(5).tell(new SpacePosition(null, "sector1").withPosition(210, 50, 0), ActorRef.noSender());
+        stations.get(6).tell(new SpacePosition(null, "sector1").withPosition(75, 110, 0), ActorRef.noSender());
 
         for (ActorRef r : stations) {
             r.tell(StationActor.START, ActorRef.noSender());
@@ -139,6 +145,10 @@ public class Main extends Application {
     private void createShips() {
         List<ActorRef> ships = new ArrayList<>();
         ships.add(akka.actorOf(Props.create(ShipActor.class), "ship1"));
+        ships.add(akka.actorOf(Props.create(ShipActor.class), "ship2"));
+        ships.add(akka.actorOf(Props.create(ShipActor.class), "ship3"));
+        ships.add(akka.actorOf(Props.create(ShipActor.class), "ship4"));
+        ships.add(akka.actorOf(Props.create(ShipActor.class), "ship5"));
 
         for (ActorRef r : ships) {
             r.tell(ShipActor.START, ActorRef.noSender());

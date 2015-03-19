@@ -14,6 +14,8 @@ import com.owl.cocoa.common.Item;
 import com.owl.cocoa.common.SpacePosition;
 import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.sector.station.StationActor;
+import com.owl.cocoa.sector.station.messages.InventoryRequest;
+import com.owl.cocoa.sector.station.messages.InventoryRequestType;
 import com.owl.cocoa.ship.goals.ShipGoal;
 import com.owl.cocoa.ship.goals.TradeRouteGoal;
 import com.owl.cocoa.ship.goals.TradeRouteGoalStage;
@@ -34,15 +36,16 @@ import scala.concurrent.duration.Duration;
 
 public class ShipActor extends UntypedActor {
 
-    protected final String objectName = UUID.randomUUID().toString();
+    private final String objectName = UUID.randomUUID().toString();
     public static final String START = "start";
     public static final String TICK = "tick";
     private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
     private SpacePosition position = new SpacePosition(objectName, "sector1").withRadius(5);
 
-    private static final ArrayBlockingQueue<ShipGoal> goals = new ArrayBlockingQueue<>(50);
+    private final ArrayBlockingQueue<ShipGoal> goals = new ArrayBlockingQueue<>(50);
 
     private final Map<String, Inventory> localInventories = new HashMap<>();
+    private Inventory shipInventory = new Inventory(objectName, 1000d, 300);
 
     @Override
     public void onReceive(Object o) throws Exception {
@@ -89,7 +92,7 @@ public class ShipActor extends UntypedActor {
         localInventories.clear();
         mediator.tell(new DistributedPubSubMediator.Publish("sector1", StationActor.GET_INVENTORY), getSelf());
 
-        goals.add(new TradeScanAwaitGoal(((System.nanoTime() / 1000000000) + 10)));
+        goals.add(new TradeScanAwaitGoal(((System.nanoTime() / 1000000000) + (long) (Math.random() * 20d))));
     }
 
     private void tradeScanAwait(TradeScanAwaitGoal tradeScanAwaitGoal) {
@@ -161,17 +164,23 @@ public class ShipActor extends UntypedActor {
                 if (!withinRangeOfPosition(10, goal.buyPosition)) {
                     goals.add(goal);
                 } else {
-                    System.out.println("Got to buy");
-                    goals.add(goal.withStage(TradeRouteGoalStage.MOVE_TO_SELL));
+                    goals.add(goal.withStage(TradeRouteGoalStage.BUY));
                 }
+                break;
+            case BUY:
+                buyMax(goal.potentialRoute.buyFrom, goal.potentialRoute.item, goal.potentialRoute.buyQuantity, goal.potentialRoute.buyPrice);
+                goals.add(goal.withStage(TradeRouteGoalStage.MOVE_TO_SELL));
                 break;
             case MOVE_TO_SELL:
                 moveTo(goal.sellPosition);
                 if (!withinRangeOfPosition(10, goal.sellPosition)) {
                     goals.add(goal);
                 } else {
-                    System.out.println("Got to sell");
+                    goals.add(goal.withStage(TradeRouteGoalStage.SELL));
                 }
+                break;
+            case SELL:
+                sellMax(goal.potentialRoute.sellFrom, goal.potentialRoute.item, goal.potentialRoute.sellQuantity, goal.potentialRoute.sellPrice);
                 break;
         }
     }
@@ -207,6 +216,60 @@ public class ShipActor extends UntypedActor {
 
     private boolean withinRangeOfPosition(int i, SpacePosition pos) {
         return Math.abs(pos.x - position.x) < i && Math.abs(pos.y - position.y) < i && Math.abs(pos.z - position.z) < i;
+    }
+
+    private void buyMax(String buyFrom, Item item, int buyQuantity, double buyPrice) {
+        try {
+            Double cash = shipInventory.cash;
+            Integer spareInventory = shipInventory.maxInventory - shipInventory.totalInventory;
+            if (buyQuantity > spareInventory) {
+                buyQuantity = spareInventory;
+            }
+            if ((buyQuantity * buyPrice) > cash) {
+                buyQuantity = (int) Math.floor(cash / buyPrice);
+            }
+
+            InventoryRequest buy = new InventoryRequest(InventoryRequestType.BUY, item, buyQuantity, buyPrice);
+            LOG.info("BUY Request: " + buy);
+            Future<Object> buyPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(buyFrom, buy), Timeout.apply(1, TimeUnit.SECONDS));
+            InventoryRequest buyResponse = (InventoryRequest) Await.result(buyPos, Duration.apply(1, TimeUnit.SECONDS));
+            LOG.info("BUY Response: " + buy);
+            cash = cash - (buyResponse.quantity * buyResponse.price);
+
+            Integer existingQuantity = shipInventory.inventory.get(item);
+            if (existingQuantity == null) {
+                existingQuantity = 0;
+            }
+            shipInventory = shipInventory.withItem(item, existingQuantity + buyResponse.quantity);
+            shipInventory = shipInventory.withCash(cash);
+        } catch (Exception ex) {
+            LOG.error("Error", ex);
+        }
+    }
+
+    private void sellMax(String sellFrom, Item item, int sellQuantity, double sellPrice) {
+        try {
+            Integer existingQuantity = shipInventory.inventory.get(item);
+            if (existingQuantity == null) {
+                existingQuantity = 0;
+            }
+            if (sellQuantity > existingQuantity) {
+                sellQuantity = existingQuantity;
+            }
+
+            InventoryRequest sell = new InventoryRequest(InventoryRequestType.SELL, item, sellQuantity, sellPrice);
+            LOG.info("SELL Request: " + sell);
+            Future<Object> sellPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(sellFrom, sell), Timeout.apply(1, TimeUnit.SECONDS));
+            InventoryRequest sellResponse = (InventoryRequest) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
+            LOG.info("SELL Response: " + sellResponse);
+
+            Double cash = shipInventory.cash + (sellResponse.quantity * sellResponse.price);
+
+            shipInventory = shipInventory.withItem(item, existingQuantity - sellResponse.quantity);
+            shipInventory = shipInventory.withCash(cash);
+        } catch (Exception ex) {
+            LOG.error("Error", ex);
+        }
     }
 
 }
