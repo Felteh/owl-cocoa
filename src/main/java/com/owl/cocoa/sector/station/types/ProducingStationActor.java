@@ -1,13 +1,20 @@
 package com.owl.cocoa.sector.station.types;
 
 import akka.contrib.pattern.DistributedPubSubMediator;
+import com.owl.cocoa.common.Item;
 import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.sector.station.StationActor;
 
 public class ProducingStationActor extends StationActor {
 
-    private static final String PRODUCTION_ITEM = "wheat";
+    private static final Item PRODUCTION_ITEM = Item.WHEAT;
     private static final Integer TICK_INV_AMOUNT = 10;
+
+    @Override
+    protected void start() {
+        super.start();
+        inventory = inventory.withItem(PRODUCTION_ITEM, 0);
+    }
 
     @Override
     protected void tick() {
@@ -18,8 +25,11 @@ public class ProducingStationActor extends StationActor {
         if ((inventory.totalInventory + TICK_INV_AMOUNT) <= inventory.maxInventory) {
             quantity = quantity + TICK_INV_AMOUNT;
             inventory = inventory.withItem(PRODUCTION_ITEM, quantity);
-            mediator.tell(new DistributedPubSubMediator.Publish(SceneActor.SCENE_EVENTS, inventory), getSelf());
+            inventory = inventory.withIncreasePrice(PRODUCTION_ITEM);
+        } else {
+            inventory = inventory.withLowerPrice(PRODUCTION_ITEM);
         }
+        mediator.tell(new DistributedPubSubMediator.Publish(SceneActor.SCENE_EVENTS, inventory), getSelf());
     }
 
 }

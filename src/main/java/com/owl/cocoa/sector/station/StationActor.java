@@ -18,8 +18,9 @@ public abstract class StationActor extends UntypedActor {
     public static final String START = "start";
     public static final String TICK = "tick";
     public static final String GET_POSITION = "getPos";
+    public static final String GET_INVENTORY = "getInv";
 
-    private SpacePosition position = new SpacePosition(objectName, null).withRadius(20).withPosition(Math.random() * 200, Math.random() * 200, Math.random() * 200);
+    private SpacePosition position = new SpacePosition(objectName, "sector1").withRadius(20).withPosition(Math.random() * 200, Math.random() * 200, Math.random() * 200);
     protected Inventory inventory = new Inventory(objectName, 1000);
 
     @Override
@@ -35,6 +36,9 @@ public abstract class StationActor extends UntypedActor {
                 case GET_POSITION:
                     getSender().tell(position, this.getSelf());
                     break;
+                case GET_INVENTORY:
+                    getSender().tell(inventory, this.getSelf());
+                    break;
             }
         } else if (o instanceof SpacePosition) {
             SpacePosition p = (SpacePosition) o;
@@ -44,9 +48,11 @@ public abstract class StationActor extends UntypedActor {
     private Cancellable cancellable;
     protected ActorRef mediator;
 
-    private void start() {
+    protected void start() {
         mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
         mediator.tell(new DistributedPubSubMediator.Publish(SceneActor.SCENE_EVENTS, position), getSelf());
+        mediator.tell(new DistributedPubSubMediator.Subscribe(position.sector, getSelf()), getSelf());
+        mediator.tell(new DistributedPubSubMediator.Subscribe(objectName, getSelf()), getSelf());
 
         cancellable = this.context().system().scheduler().schedule(Duration.Zero(),
                 Duration.create(100, TimeUnit.MILLISECONDS), this.getSelf(), TICK,

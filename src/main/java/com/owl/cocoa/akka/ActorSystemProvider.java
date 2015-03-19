@@ -11,7 +11,7 @@ public class ActorSystemProvider implements Provider<ActorSystem> {
     @Override
     public ActorSystem get() {
         Config akkaConfig = ConfigFactory.load("application.conf");
-        ExtendedActorSystem system = (ExtendedActorSystem) ActorSystem.create("systemName", akkaConfig);
+        ExtendedActorSystem system = (ExtendedActorSystem) ActorSystem.create("owl", akkaConfig);
         return system;
     }
 

@@ -126,10 +126,10 @@ public class Main extends Application {
         stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station3"));
         stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station4"));
 
-        stations.get(0).tell(new SpacePosition(null, "sector1").withPosition(0, 0, 0), ActorRef.noSender());
-        stations.get(1).tell(new SpacePosition(null, "sector1").withPosition(100, 100, 200), ActorRef.noSender());
-        stations.get(2).tell(new SpacePosition(null, "sector1").withPosition(300, 300, 100), ActorRef.noSender());
-        stations.get(3).tell(new SpacePosition(null, "sector1").withPosition(-150, 200, 75), ActorRef.noSender());
+        stations.get(0).tell(new SpacePosition(null, "sector1").withPosition(-250, 400, 0), ActorRef.noSender());
+        stations.get(1).tell(new SpacePosition(null, "sector1").withPosition(300, -100, 200), ActorRef.noSender());
+        stations.get(2).tell(new SpacePosition(null, "sector1").withPosition(300, 200, 100), ActorRef.noSender());
+        stations.get(3).tell(new SpacePosition(null, "sector1").withPosition(-150, -200, 75), ActorRef.noSender());
 
         for (ActorRef r : stations) {
             r.tell(StationActor.START, ActorRef.noSender());
