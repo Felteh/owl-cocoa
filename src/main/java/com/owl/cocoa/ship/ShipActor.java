@@ -151,7 +151,7 @@ public class ShipActor extends UntypedActor {
                     SpacePosition sellP = (SpacePosition) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
                     goals.add(new TradeRouteGoal(potentialRoute, buyP, sellP));
                 } catch (Exception ex) {
-                    LOG.error("Fail", ex);
+                    LOG.error(ex, "Fail");
                 }
             }
         }
@@ -228,10 +228,10 @@ public class ShipActor extends UntypedActor {
             }
 
             InventoryRequest buy = new InventoryRequest(InventoryRequestType.BUY, item, buyQuantity, buyPrice);
-            LOG.info("BUY Request: " + buy);
+            LOG.debug("BUY Request: " + buy);
             Future<Object> buyPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(buyFrom, buy), Timeout.apply(1, TimeUnit.SECONDS));
             InventoryRequest buyResponse = (InventoryRequest) Await.result(buyPos, Duration.apply(1, TimeUnit.SECONDS));
-            LOG.info("BUY Response: " + buy);
+            LOG.debug("BUY Response: " + buy);
             cash = cash - (buyResponse.quantity * buyResponse.price);
 
             Integer existingQuantity = shipInventory.inventory.get(item);
@@ -241,7 +241,7 @@ public class ShipActor extends UntypedActor {
             shipInventory = shipInventory.withItem(item, existingQuantity + buyResponse.quantity);
             shipInventory = shipInventory.withCash(cash);
         } catch (Exception ex) {
-            LOG.error("Error", ex);
+            LOG.error(ex, "Error");
         }
     }
 
@@ -254,17 +254,17 @@ public class ShipActor extends UntypedActor {
             Integer sellQuantity = existingQuantity;
 
             InventoryRequest sell = new InventoryRequest(InventoryRequestType.SELL, item, sellQuantity, sellPrice);
-            LOG.info("SELL Request: " + sell);
+            LOG.debug("SELL Request: " + sell);
             Future<Object> sellPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(sellFrom, sell), Timeout.apply(1, TimeUnit.SECONDS));
             InventoryRequest sellResponse = (InventoryRequest) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
-            LOG.info("SELL Response: " + sellResponse);
+            LOG.debug("SELL Response: " + sellResponse);
 
             Double cash = shipInventory.cash + (sellResponse.quantity * sellResponse.price);
 
             shipInventory = shipInventory.withItem(item, existingQuantity - sellResponse.quantity);
             shipInventory = shipInventory.withCash(cash);
         } catch (Exception ex) {
-            LOG.error("Error", ex);
+            LOG.error(ex, "Error");
         }
     }
 

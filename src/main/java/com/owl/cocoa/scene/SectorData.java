@@ -17,7 +17,8 @@ public class SectorData {
     }
 
     public SectorData withSpacePosition(SpacePosition pos) {
-        spacePositions.put(pos.objectName, pos);
-        return new SectorData(spacePositions);
+        Map<String, SpacePosition> spaceP = new HashMap<>(spacePositions);
+        spaceP.put(pos.objectName, pos);
+        return new SectorData(spaceP);
     }
 }

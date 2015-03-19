@@ -20,12 +20,14 @@ public class SceneData {
     }
 
     public SceneData withSectorData(String key, SectorData pos) {
-        sectorData.put(key, pos);
-        return new SceneData(sectorData, inventory);
+        Map<String, SectorData> sectorD = new HashMap<>(sectorData);
+        sectorD.put(key, pos);
+        return new SceneData(sectorD, inventory);
     }
 
     public SceneData withInventoryData(String key, Inventory iv) {
-        inventory.put(key, iv);
-        return new SceneData(sectorData, inventory);
+        Map<String, Inventory> ivD = new HashMap<>(inventory);
+        ivD.put(key, iv);
+        return new SceneData(sectorData, ivD);
     }
 }
