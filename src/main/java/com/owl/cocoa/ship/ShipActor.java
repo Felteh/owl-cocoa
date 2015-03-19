@@ -168,7 +168,7 @@ public class ShipActor extends UntypedActor {
                 }
                 break;
             case BUY:
-                buyMax(goal.potentialRoute.buyFrom, goal.potentialRoute.item, goal.potentialRoute.buyQuantity, goal.potentialRoute.buyPrice);
+                buyMax(goal.potentialRoute.buyFrom, goal.potentialRoute.item, goal.potentialRoute.buyPrice);
                 goals.add(goal.withStage(TradeRouteGoalStage.MOVE_TO_SELL));
                 break;
             case MOVE_TO_SELL:
@@ -180,7 +180,7 @@ public class ShipActor extends UntypedActor {
                 }
                 break;
             case SELL:
-                sellMax(goal.potentialRoute.sellFrom, goal.potentialRoute.item, goal.potentialRoute.sellQuantity, goal.potentialRoute.sellPrice);
+                sellMax(goal.potentialRoute.sellFrom, goal.potentialRoute.item, goal.potentialRoute.sellPrice);
                 break;
         }
     }
@@ -218,13 +218,11 @@ public class ShipActor extends UntypedActor {
         return Math.abs(pos.x - position.x) < i && Math.abs(pos.y - position.y) < i && Math.abs(pos.z - position.z) < i;
     }
 
-    private void buyMax(String buyFrom, Item item, int buyQuantity, double buyPrice) {
+    private void buyMax(String buyFrom, Item item, double buyPrice) {
         try {
             Double cash = shipInventory.cash;
             Integer spareInventory = shipInventory.maxInventory - shipInventory.totalInventory;
-            if (buyQuantity > spareInventory) {
-                buyQuantity = spareInventory;
-            }
+            Integer buyQuantity = spareInventory;
             if ((buyQuantity * buyPrice) > cash) {
                 buyQuantity = (int) Math.floor(cash / buyPrice);
             }
@@ -247,15 +245,13 @@ public class ShipActor extends UntypedActor {
         }
     }
 
-    private void sellMax(String sellFrom, Item item, int sellQuantity, double sellPrice) {
+    private void sellMax(String sellFrom, Item item, double sellPrice) {
         try {
             Integer existingQuantity = shipInventory.inventory.get(item);
             if (existingQuantity == null) {
                 existingQuantity = 0;
             }
-            if (sellQuantity > existingQuantity) {
-                sellQuantity = existingQuantity;
-            }
+            Integer sellQuantity = existingQuantity;
 
             InventoryRequest sell = new InventoryRequest(InventoryRequestType.SELL, item, sellQuantity, sellPrice);
             LOG.info("SELL Request: " + sell);
