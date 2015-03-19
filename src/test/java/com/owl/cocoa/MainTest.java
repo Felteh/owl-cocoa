@@ -1,15 +1,9 @@
 package com.owl.cocoa;
+//@Modules(ModuleForTesting.class)
 
-import com.googlecode.guicebehave.Modules;
-import com.googlecode.guicebehave.Story;
-import com.googlecode.guicebehave.StoryRunner;
-import org.junit.runner.RunWith;
-
-@RunWith(StoryRunner.class)
-@Modules(ModuleForTesting.class)
 public class MainTest {
 
-    @Story
+//    @Story
     public void testStartup() {
 
     }

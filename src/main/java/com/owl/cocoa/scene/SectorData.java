@@ -1,6 +1,6 @@
 package com.owl.cocoa.scene;
 
-import common.SpacePosition;
+import com.owl.cocoa.common.SpacePosition;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,22 +1,31 @@
 package com.owl.cocoa.scene;
 
+import com.owl.cocoa.common.Inventory;
 import java.util.HashMap;
 import java.util.Map;
 
 public class SceneData {
 
     public final Map<String, SectorData> sectorData;
+    public final Map<String, Inventory> inventory;
 
     public SceneData() {
         sectorData = new HashMap<>();
+        inventory = new HashMap<>();
     }
 
-    public SceneData(Map<String, SectorData> sectorData) {
+    public SceneData(Map<String, SectorData> sectorData, Map<String, Inventory> inventory) {
         this.sectorData = sectorData;
+        this.inventory = inventory;
     }
 
     public SceneData withSectorData(String key, SectorData pos) {
         sectorData.put(key, pos);
-        return new SceneData(sectorData);
+        return new SceneData(sectorData, inventory);
+    }
+
+    public SceneData withInventoryData(String key, Inventory iv) {
+        inventory.put(key, iv);
+        return new SceneData(sectorData, inventory);
     }
 }

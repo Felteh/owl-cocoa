@@ -1,6 +1,4 @@
-package common;
-
-import java.util.UUID;
+package com.owl.cocoa.common;
 
 public class SpacePosition {
 
@@ -11,8 +9,8 @@ public class SpacePosition {
     public final double z;
     public final double radius;
 
-    public SpacePosition(String sector) {
-        objectName = UUID.randomUUID().toString();
+    public SpacePosition(String objectName, String sector) {
+        this.objectName = objectName;
         this.sector = sector;
         x = 0;
         y = 0;
@@ -39,5 +37,10 @@ public class SpacePosition {
 
     public SpacePosition withSector(String sector) {
         return new SpacePosition(objectName, sector, x, y, z, radius);
+    }
+
+    @Override
+    public String toString() {
+        return "SpacePosition{" + "objectName=" + objectName + ", sector=" + sector + ", x=" + x + ", y=" + y + ", z=" + z + ", radius=" + radius + '}';
     }
 }

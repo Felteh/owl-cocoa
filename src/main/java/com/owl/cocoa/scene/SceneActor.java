@@ -4,10 +4,14 @@ import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
 import akka.contrib.pattern.DistributedPubSubExtension;
 import akka.contrib.pattern.DistributedPubSubMediator;
-import common.SpacePosition;
+import akka.event.Logging;
+import akka.event.LoggingAdapter;
+import com.owl.cocoa.common.Inventory;
+import com.owl.cocoa.common.SpacePosition;
 
 public class SceneActor extends UntypedActor {
 
+    private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
     public static final String START = "start";
     public static final String GET_SCENE_DATA = "getSceneData";
 
@@ -25,7 +29,7 @@ public class SceneActor extends UntypedActor {
                     break;
             }
         } else if (o instanceof DistributedPubSubMediator.SubscribeAck) {
-            System.out.println("Subscribed");
+            LOG.info("Subscribed");
         } else if (o instanceof SpacePosition) {
             SpacePosition p = (SpacePosition) o;
             SectorData sD = sceneData.sectorData.get(p.sector);
@@ -36,14 +40,21 @@ public class SceneActor extends UntypedActor {
             sD = sD.withSpacePosition(p);
 
             sceneData = sceneData.withSectorData(p.sector, sD);
+        } else if (o instanceof Inventory) {
+            Inventory p = (Inventory) o;
+            sceneData = sceneData.withInventoryData(p.objectName, p);
+        } else {
+            LOG.info("Unhandled:" + o);
         }
     }
 
+    public static final String SCENE_EVENTS = "scene";
+
     private void start() {
         ActorRef mediator
-                 = DistributedPubSubExtension.get(getContext().system()).mediator();
-        mediator.tell(new DistributedPubSubMediator.Subscribe("scene", getSelf()),
-                      getSelf());
+                = DistributedPubSubExtension.get(getContext().system()).mediator();
+        mediator.tell(new DistributedPubSubMediator.Subscribe(SCENE_EVENTS, getSelf()),
+                getSelf());
     }
 
 }

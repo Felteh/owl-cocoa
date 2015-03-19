@@ -9,13 +9,16 @@ import akka.pattern.Patterns;
 import akka.util.Timeout;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.owl.cocoa.common.SpacePosition;
+import com.owl.cocoa.scene.Entity;
 import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.scene.SceneData;
 import com.owl.cocoa.scene.SectorData;
 import com.owl.cocoa.sector.SectorActor;
 import com.owl.cocoa.sector.station.StationActor;
+import com.owl.cocoa.sector.station.types.FactoryStationActor;
+import com.owl.cocoa.sector.station.types.ProducingStationActor;
 import com.owl.cocoa.ship.ShipActor;
-import common.SpacePosition;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,14 +30,21 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.shape.Sphere;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import scala.concurrent.Future;
 
 public class Main extends Application {
+
+    private static final ArrayBlockingQueue<SceneData> queue = new ArrayBlockingQueue<>(50);
+
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     private final Group root = new Group();
     private Injector injector;
@@ -42,10 +52,6 @@ public class Main extends Application {
     private ActorRef sceneRef;
 
     private final Map<String, Group> entityGroups = new HashMap<>();
-
-    public static void main(String[] args) {
-        launch(args);
-    }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -64,13 +70,21 @@ public class Main extends Application {
             List<SceneData> toRender = new ArrayList<>();
             queue.drainTo(toRender);
 
-            for (SceneData a : toRender) {
+            for (final SceneData a : toRender) {
                 for (Entry<String, SectorData> sector : a.sectorData.entrySet()) {
                     for (Entry<String, SpacePosition> entity : sector.getValue().spacePositions.entrySet()) {
                         Group g = entityGroups.get(entity.getKey());
                         if (g == null) {
-                            Sphere sphere = new Sphere(entity.getValue().radius, 5);
+                            Entity sphere = new Entity(entity.getValue().objectName, entity.getValue().radius);
                             g = new Group(sphere);
+                            sphere.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+                                @Override
+                                public void handle(MouseEvent event) {
+                                    String objectName = ((Entity) event.getPickResult().getIntersectedNode()).objectName;
+                                    System.out.println(a.inventory.get(objectName));
+                                }
+                            });
                             root.getChildren().add(g);
                             entityGroups.put(entity.getKey(), g);
                         }
@@ -95,31 +109,38 @@ public class Main extends Application {
         sceneRef = akka.actorOf(Props.create(SceneActor.class), "Scene");
         sceneRef.tell(SceneActor.START, ActorRef.noSender());
     }
-    private static final ArrayBlockingQueue<SceneData> queue = new ArrayBlockingQueue<>(50);
 
     private void createSectors() {
-        Map<String, ActorRef> sectors = new HashMap<>();
-        sectors.put("sector1", akka.actorOf(Props.create(SectorActor.class), "sector1"));
+        List<ActorRef> sectors = new ArrayList<>();
+        sectors.add(akka.actorOf(Props.create(SectorActor.class), "sector1"));
 
-        for (ActorRef r : sectors.values()) {
+        for (ActorRef r : sectors) {
             r.tell(SectorActor.START, ActorRef.noSender());
         }
     }
 
     private void createStations() {
-        Map<String, ActorRef> stations = new HashMap<>();
-        stations.put("station1", akka.actorOf(Props.create(StationActor.class), "station1"));
+        List<ActorRef> stations = new ArrayList<>();
+        stations.add(akka.actorOf(Props.create(ProducingStationActor.class), "station1"));
+        stations.add(akka.actorOf(Props.create(ProducingStationActor.class), "station2"));
+        stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station3"));
+        stations.add(akka.actorOf(Props.create(FactoryStationActor.class), "station4"));
 
-        for (ActorRef r : stations.values()) {
+        stations.get(0).tell(new SpacePosition(null, "sector1").withPosition(0, 0, 0), ActorRef.noSender());
+        stations.get(1).tell(new SpacePosition(null, "sector1").withPosition(100, 100, 200), ActorRef.noSender());
+        stations.get(2).tell(new SpacePosition(null, "sector1").withPosition(300, 300, 100), ActorRef.noSender());
+        stations.get(3).tell(new SpacePosition(null, "sector1").withPosition(-150, 200, 75), ActorRef.noSender());
+
+        for (ActorRef r : stations) {
             r.tell(StationActor.START, ActorRef.noSender());
         }
     }
 
     private void createShips() {
-        Map<String, ActorRef> ships = new HashMap<>();
-        ships.put("ship1", akka.actorOf(Props.create(ShipActor.class), "ship1"));
+        List<ActorRef> ships = new ArrayList<>();
+        ships.add(akka.actorOf(Props.create(ShipActor.class), "ship1"));
 
-        for (ActorRef r : ships.values()) {
+        for (ActorRef r : ships) {
             r.tell(ShipActor.START, ActorRef.noSender());
         }
     }
@@ -151,4 +172,5 @@ public class Main extends Application {
         t.setDaemon(true);
         t.start();
     }
+
 }
