@@ -24,6 +24,13 @@ public class TradeRouteGoal implements ShipGoal {
         this.stage = TradeRouteGoalStage.MOVE_TO_BUY;
     }
 
+    public TradeRouteGoal(TradeableItem potentialRoute, SpacePosition sellPosition) {
+        this.potentialRoute = potentialRoute;
+        this.buyPosition = null;
+        this.sellPosition = sellPosition;
+        this.stage = TradeRouteGoalStage.MOVE_TO_SELL;
+    }
+
     public TradeRouteGoal withStage(TradeRouteGoalStage stage) {
         return new TradeRouteGoal(potentialRoute, buyPosition, sellPosition, stage);
     }

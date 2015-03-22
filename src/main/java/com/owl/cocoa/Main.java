@@ -15,7 +15,6 @@ import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.scene.SceneData;
 import com.owl.cocoa.scene.SectorData;
 import com.owl.cocoa.sector.SectorActor;
-import com.owl.cocoa.sector.station.StationActor;
 import com.owl.cocoa.sector.station.types.FactoryStationActor;
 import com.owl.cocoa.sector.station.types.ProducingStationActor;
 import com.owl.cocoa.ship.ShipActor;
@@ -24,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import javafx.animation.Animation;
@@ -114,16 +114,11 @@ public class Main extends Application {
 
     private void createActors() {
         sceneRef = akka.actorOf(Props.create(SceneActor.class), "Scene");
-        sceneRef.tell(SceneActor.START, ActorRef.noSender());
     }
 
     private void createSectors() {
         List<ActorRef> sectors = new ArrayList<>();
         sectors.add(akka.actorOf(Props.create(SectorActor.class), "sector1"));
-
-        for (ActorRef r : sectors) {
-            r.tell(SectorActor.START, ActorRef.noSender());
-        }
     }
 
     private void createStations() {
@@ -170,20 +165,15 @@ public class Main extends Application {
     }
 
     private void createProducingStation(int i) {
-        ActorRef r = akka.actorOf(Props.create(ProducingStationActor.class), "producerStation" + i);
-        r.tell(new SpacePosition(null, "sector1").withPosition(400 - (Math.random() * 800), 400 - (Math.random() * 800), 400 - (Math.random() * 800)), ActorRef.noSender());
-        r.tell(StationActor.START, ActorRef.noSender());
+        ActorRef r = akka.actorOf(Props.create(ProducingStationActor.class, new SpacePosition(UUID.randomUUID().toString(), "sector1").withPosition(400 - (Math.random() * 800), 400 - (Math.random() * 800), 400 - (Math.random() * 800)).withRadius(25)), "producerStation" + i);
     }
 
     private void createFactoryStation(int i) {
-        ActorRef r = akka.actorOf(Props.create(FactoryStationActor.class), "factoryStation" + i);
-        r.tell(new SpacePosition(null, "sector1").withPosition(400 - (Math.random() * 800), 400 - (Math.random() * 800), 400 - (Math.random() * 800)), ActorRef.noSender());
-        r.tell(StationActor.START, ActorRef.noSender());
+        ActorRef r = akka.actorOf(Props.create(FactoryStationActor.class, new SpacePosition(UUID.randomUUID().toString(), "sector1").withPosition(400 - (Math.random() * 800), 400 - (Math.random() * 800), 400 - (Math.random() * 800)).withRadius(15)), "factoryStation" + i);
     }
 
     private void createShip(int i) {
-        ActorRef r = akka.actorOf(Props.create(ShipActor.class), "ship" + i);
-        r.tell(ShipActor.START, ActorRef.noSender());
+        akka.actorOf(Props.create(ShipActor.class), "ship" + i);
     }
 
 }

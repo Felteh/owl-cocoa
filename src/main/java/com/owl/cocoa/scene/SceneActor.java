@@ -11,19 +11,25 @@ import com.owl.cocoa.common.SpacePosition;
 
 public class SceneActor extends UntypedActor {
 
-    private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
-    public static final String START = "start";
     public static final String GET_SCENE_DATA = "getSceneData";
+    public static final String SCENE_EVENTS = "scene";
+    private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
 
     private SceneData sceneData = new SceneData();
+
+    @Override
+    public void preStart() throws Exception {
+        super.preStart();
+        ActorRef mediator
+                = DistributedPubSubExtension.get(getContext().system()).mediator();
+        mediator.tell(new DistributedPubSubMediator.Subscribe(SCENE_EVENTS, getSelf()),
+                getSelf());
+    }
 
     @Override
     public void onReceive(Object o) throws Exception {
         if (o instanceof String) {
             switch ((String) o) {
-                case START:
-                    start();
-                    break;
                 case GET_SCENE_DATA:
                     this.getSender().tell(sceneData, getSelf());
                     break;
@@ -46,15 +52,6 @@ public class SceneActor extends UntypedActor {
         } else {
             LOG.info("Unhandled:" + o);
         }
-    }
-
-    public static final String SCENE_EVENTS = "scene";
-
-    private void start() {
-        ActorRef mediator
-                = DistributedPubSubExtension.get(getContext().system()).mediator();
-        mediator.tell(new DistributedPubSubMediator.Subscribe(SCENE_EVENTS, getSelf()),
-                getSelf());
     }
 
 }

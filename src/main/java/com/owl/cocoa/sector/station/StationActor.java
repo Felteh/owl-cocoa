@@ -12,29 +12,33 @@ import com.owl.cocoa.common.SpacePosition;
 import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.sector.station.messages.InventoryRequest;
 import com.owl.cocoa.sector.station.messages.InventoryRequestType;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import scala.concurrent.duration.Duration;
 
 public abstract class StationActor extends UntypedActor {
 
-    protected final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
-    protected final String objectName = UUID.randomUUID().toString();
-    public static final String START = "start";
     public static final String TICK = "tick";
     public static final String GET_POSITION = "getPos";
     public static final String GET_INVENTORY = "getInv";
+    protected final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
+    protected final String objectName;
 
-    private SpacePosition position = new SpacePosition(objectName, "sector1").withRadius(20).withPosition(Math.random() * 200, Math.random() * 200, Math.random() * 200);
-    protected Inventory inventory = new Inventory(objectName, 5000000000d, 1000);
+    private final SpacePosition position;
+    protected Inventory inventory;
+
+    private Cancellable cancellable;
+    protected ActorRef mediator;
+
+    public StationActor(SpacePosition position) {
+        this.objectName = position.objectName;
+        this.position = position;
+        this.inventory = new Inventory(objectName, 5000000000d, 1000);
+    }
 
     @Override
     public void onReceive(Object o) throws Exception {
         if (o instanceof String) {
             switch ((String) o) {
-                case START:
-                    start();
-                    break;
                 case TICK:
                     tick();
                     break;
@@ -45,17 +49,15 @@ public abstract class StationActor extends UntypedActor {
                     getSender().tell(inventory, this.getSelf());
                     break;
             }
-        } else if (o instanceof SpacePosition) {
-            SpacePosition p = (SpacePosition) o;
-            position = position.withPosition(p.x, p.y, p.z);
         } else if (o instanceof InventoryRequest) {
             getSender().tell(processInventoryRequest((InventoryRequest) o), this.getSelf());
         }
     }
-    private Cancellable cancellable;
-    protected ActorRef mediator;
 
-    protected void start() {
+    @Override
+    public void preStart() throws Exception {
+        super.preStart();
+
         mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
         mediator.tell(new DistributedPubSubMediator.Publish(SceneActor.SCENE_EVENTS, position), getSelf());
         mediator.tell(new DistributedPubSubMediator.Subscribe(position.sector, getSelf()), getSelf());

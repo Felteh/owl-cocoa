@@ -2,6 +2,7 @@ package com.owl.cocoa.sector.station.types;
 
 import akka.contrib.pattern.DistributedPubSubMediator;
 import com.owl.cocoa.common.Item;
+import com.owl.cocoa.common.SpacePosition;
 import com.owl.cocoa.scene.SceneActor;
 import com.owl.cocoa.sector.station.StationActor;
 
@@ -10,9 +11,13 @@ public class ProducingStationActor extends StationActor {
     private static final Item PRODUCTION_ITEM = Item.COCOA;
     private static final Integer TICK_INV_AMOUNT = 10;
 
+    public ProducingStationActor(SpacePosition position) {
+        super(position);
+    }
+
     @Override
-    protected void start() {
-        super.start();
+    public void preStart() throws Exception {
+        super.preStart();
         inventory = inventory.withItem(PRODUCTION_ITEM, 0);
     }
 

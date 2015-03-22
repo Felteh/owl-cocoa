@@ -6,7 +6,6 @@ import akka.event.LoggingAdapter;
 
 public class SectorActor extends UntypedActor {
 
-    public static final String START = "start";
     private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
 
     @Override

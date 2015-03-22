@@ -37,7 +37,6 @@ import scala.concurrent.duration.Duration;
 public class ShipActor extends UntypedActor {
 
     private final String objectName = UUID.randomUUID().toString();
-    public static final String START = "start";
     public static final String TICK = "tick";
     private final LoggingAdapter LOG = Logging.getLogger(getContext().system(), this);
     private SpacePosition position = new SpacePosition(objectName, "sector1").withRadius(5);
@@ -48,12 +47,19 @@ public class ShipActor extends UntypedActor {
     private Inventory shipInventory = new Inventory(objectName, 1000d, 300);
 
     @Override
+    public void preStart() throws Exception {
+        super.preStart();
+
+        mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
+        cancellable = this.context().system().scheduler().schedule(Duration.Zero(),
+                Duration.create(20, TimeUnit.MILLISECONDS), this.getSelf(), TICK,
+                this.context().system().dispatcher(), null);
+    }
+
+    @Override
     public void onReceive(Object o) throws Exception {
         if (o instanceof String) {
             switch ((String) o) {
-                case START:
-                    start();
-                    break;
                 case TICK:
                     tick();
                     break;
@@ -66,16 +72,17 @@ public class ShipActor extends UntypedActor {
     private Cancellable cancellable;
     private ActorRef mediator;
 
-    private void start() {
-        mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
-        cancellable = this.context().system().scheduler().schedule(Duration.Zero(),
-                Duration.create(20, TimeUnit.MILLISECONDS), this.getSelf(), TICK,
-                this.context().system().dispatcher(), null);
-    }
-
     private void tick() {
         if (goals.isEmpty()) {
-            goals.add(new TradeScanStartGoal());
+            //If more than half full - try to sell things
+            if (shipInventory.totalInventory.doubleValue() / shipInventory.maxInventory.doubleValue() < 0.5) {
+                goals.add(new TradeScanStartGoal());
+            } else {
+                List<Entry<Item, Integer>> items = new ArrayList<>(shipInventory.inventory.entrySet());
+                Collections.sort(items,
+                        (Entry<Item, Integer> o1, Entry<Item, Integer> o2) -> Integer.compare(o2.getValue(), o1.getValue()));
+                goals.add(new TradeScanStartGoal(items.get(0).getKey()));
+            }
         } else {
             ShipGoal goal = goals.poll();
             if (goal instanceof TradeScanStartGoal) {
@@ -92,19 +99,57 @@ public class ShipActor extends UntypedActor {
         localInventories.clear();
         mediator.tell(new DistributedPubSubMediator.Publish("sector1", StationActor.GET_INVENTORY), getSelf());
 
-        goals.add(new TradeScanAwaitGoal(((System.nanoTime() / 1000000000) + (long) (Math.random() * 20d))));
+        goals.add(new TradeScanAwaitGoal(tradeScanGoal.item, ((System.nanoTime() / 1000000000) + (long) (Math.random() * 20d))));
     }
 
     private void tradeScanAwait(TradeScanAwaitGoal tradeScanAwaitGoal) {
         if ((System.nanoTime() / 1000000000) < tradeScanAwaitGoal.expiryNano) {
             goals.add(tradeScanAwaitGoal);
         } else {
-            findTradeRoute();
+            if (tradeScanAwaitGoal.item.isPresent()) {
+                findSellRoute(tradeScanAwaitGoal.item.get());
+            } else {
+                findTradeRoute();
+            }
+        }
+    }
+
+    private void findSellRoute(Item i) {
+        List<TradeableItem> tradeables = new ArrayList<>();
+        for (Entry<String, Inventory> e1 : localInventories.entrySet()) {
+            Integer buyQuantity = this.shipInventory.inventory.get(i);
+            Double buyPrice = i.minPrice;
+
+            Integer sellQuantity = e1.getValue().inventory.get(i);
+            Double sellPrice = e1.getValue().price.get(i);
+
+            TradeableItem t = new TradeableItem(i);
+            if (sellQuantity != null && sellQuantity > 0) {
+                t = t.withBuy(this.objectName, buyQuantity, buyPrice);
+                t = t.withSell(e1.getKey(), sellQuantity, sellPrice);
+
+                if (t.roi > 1) {
+                    tradeables.add(t);
+                }
+            }
+        }
+
+        if (!tradeables.isEmpty()) {
+            Collections.sort(tradeables, (TradeableItem o1, TradeableItem o2) -> Double.compare(o2.roi, o1.roi));
+            List<TradeableItem> subTradeables = tradeables.subList(0, Math.min(tradeables.size(), 5));
+            Collections.shuffle(subTradeables);
+            TradeableItem potentialRoute = subTradeables.get(0);
+            try {
+                Future<Object> sellPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(potentialRoute.sellFrom, StationActor.GET_POSITION), Timeout.apply(1, TimeUnit.SECONDS));
+                SpacePosition sellP = (SpacePosition) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
+                goals.add(new TradeRouteGoal(potentialRoute, sellP));
+            } catch (Exception ex) {
+                LOG.error(ex, "Fail");
+            }
         }
     }
 
     private void findTradeRoute() {
-        //For each item find the lowest and high price
         List<TradeableItem> tradeables = new ArrayList<>();
         for (Item i : Item.values()) {
             for (Entry<String, Inventory> e1 : localInventories.entrySet()) {
@@ -129,8 +174,27 @@ public class ShipActor extends UntypedActor {
                         }
 
                         if (e1Inventory > 0 || e2Inventory > 0) {
-                            TradeableItem t = new TradeableItem(i, e1.getKey(), e1Inventory, e1Price, e2.getKey(), e2Inventory, e2Price);
-                            if (t.roi > 0) {
+                            TradeableItem t = new TradeableItem(i);
+                            if (e1Inventory == 0) {
+                                Integer buyQuantity = maxBuyableQuantity(e2Price);
+
+                                t = t.withBuy(e2.getKey(), Math.min(buyQuantity, e2Inventory), e2Price);
+                                t = t.withSell(e1.getKey(), e1Inventory, e1Price);
+                            } else if (e2Inventory == 0) {
+                                Integer buyQuantity = maxBuyableQuantity(e1Price);
+                                t = t.withBuy(e1.getKey(), Math.min(buyQuantity, e1Inventory), e1Price);
+                                t = t.withSell(e2.getKey(), e2Inventory, e2Price);
+                            } else if (e1Price < e2Price) {
+                                Integer buyQuantity = maxBuyableQuantity(e1Price);
+                                t = t.withBuy(e1.getKey(), Math.min(buyQuantity, e1Inventory), e1Price);
+                                t = t.withSell(e2.getKey(), e2Inventory, e2Price);
+                            } else {
+                                Integer buyQuantity = maxBuyableQuantity(e2Price);
+                                t = t.withBuy(e2.getKey(), Math.min(buyQuantity, e2Inventory), e2Price);
+                                t = t.withSell(e1.getKey(), e1Inventory, e1Price);
+                            }
+
+                            if (t.roi > 1) {
                                 tradeables.add(t);
                             }
                         }
@@ -141,18 +205,17 @@ public class ShipActor extends UntypedActor {
 
         if (!tradeables.isEmpty()) {
             Collections.sort(tradeables, (TradeableItem o1, TradeableItem o2) -> Double.compare(o2.roi, o1.roi));
-
-            TradeableItem potentialRoute = tradeables.get(0);
-            if (potentialRoute.roi > 1) {
-                try {
-                    Future<Object> buyPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(potentialRoute.buyFrom, StationActor.GET_POSITION), Timeout.apply(1, TimeUnit.SECONDS));
-                    Future<Object> sellPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(potentialRoute.sellFrom, StationActor.GET_POSITION), Timeout.apply(1, TimeUnit.SECONDS));
-                    SpacePosition buyP = (SpacePosition) Await.result(buyPos, Duration.apply(1, TimeUnit.SECONDS));
-                    SpacePosition sellP = (SpacePosition) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
-                    goals.add(new TradeRouteGoal(potentialRoute, buyP, sellP));
-                } catch (Exception ex) {
-                    LOG.error(ex, "Fail");
-                }
+            List<TradeableItem> subTradeables = tradeables.subList(0, Math.min(tradeables.size(), 5));
+            Collections.shuffle(subTradeables);
+            TradeableItem potentialRoute = subTradeables.get(0);
+            try {
+                Future<Object> buyPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(potentialRoute.buyFrom, StationActor.GET_POSITION), Timeout.apply(1, TimeUnit.SECONDS));
+                Future<Object> sellPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(potentialRoute.sellFrom, StationActor.GET_POSITION), Timeout.apply(1, TimeUnit.SECONDS));
+                SpacePosition buyP = (SpacePosition) Await.result(buyPos, Duration.apply(1, TimeUnit.SECONDS));
+                SpacePosition sellP = (SpacePosition) Await.result(sellPos, Duration.apply(1, TimeUnit.SECONDS));
+                goals.add(new TradeRouteGoal(potentialRoute, buyP, sellP));
+            } catch (Exception ex) {
+                LOG.error(ex, "Fail");
             }
         }
     }
@@ -168,8 +231,9 @@ public class ShipActor extends UntypedActor {
                 }
                 break;
             case BUY:
-                buyMax(goal.potentialRoute.buyFrom, goal.potentialRoute.item, goal.potentialRoute.buyPrice);
-                goals.add(goal.withStage(TradeRouteGoalStage.MOVE_TO_SELL));
+                if (buyMax(goal.potentialRoute.buyFrom, goal.potentialRoute.item, goal.potentialRoute.buyPrice)) {
+                    goals.add(goal.withStage(TradeRouteGoalStage.MOVE_TO_SELL));
+                }
                 break;
             case MOVE_TO_SELL:
                 moveTo(goal.sellPosition);
@@ -218,21 +282,19 @@ public class ShipActor extends UntypedActor {
         return Math.abs(pos.x - position.x) < i && Math.abs(pos.y - position.y) < i && Math.abs(pos.z - position.z) < i;
     }
 
-    private void buyMax(String buyFrom, Item item, double buyPrice) {
+    private boolean buyMax(String buyFrom, Item item, double buyPrice) {
         try {
-            Double cash = shipInventory.cash;
-            Integer spareInventory = shipInventory.maxInventory - shipInventory.totalInventory;
-            Integer buyQuantity = spareInventory;
-            if ((buyQuantity * buyPrice) > cash) {
-                buyQuantity = (int) Math.floor(cash / buyPrice);
-            }
+            Integer buyQuantity = maxBuyableQuantity(buyPrice);
 
             InventoryRequest buy = new InventoryRequest(InventoryRequestType.BUY, item, buyQuantity, buyPrice);
             LOG.debug("BUY Request: " + buy);
             Future<Object> buyPos = Patterns.ask(mediator, new DistributedPubSubMediator.Publish(buyFrom, buy), Timeout.apply(1, TimeUnit.SECONDS));
             InventoryRequest buyResponse = (InventoryRequest) Await.result(buyPos, Duration.apply(1, TimeUnit.SECONDS));
-            LOG.debug("BUY Response: " + buy);
-            cash = cash - (buyResponse.quantity * buyResponse.price);
+            if (buyResponse.quantity == 0) {
+                return false;
+            }
+
+            Double cash = shipInventory.cash - (buyResponse.quantity * buyResponse.price);
 
             Integer existingQuantity = shipInventory.inventory.get(item);
             if (existingQuantity == null) {
@@ -240,9 +302,11 @@ public class ShipActor extends UntypedActor {
             }
             shipInventory = shipInventory.withItem(item, existingQuantity + buyResponse.quantity);
             shipInventory = shipInventory.withCash(cash);
+            return true;
         } catch (Exception ex) {
             LOG.error(ex, "Error");
         }
+        return false;
     }
 
     private void sellMax(String sellFrom, Item item, double sellPrice) {
@@ -268,4 +332,13 @@ public class ShipActor extends UntypedActor {
         }
     }
 
+    private Integer maxBuyableQuantity(double buyPrice) {
+        Double cash = shipInventory.cash;
+        Integer spareInventory = shipInventory.maxInventory - shipInventory.totalInventory;
+        Integer buyQuantity = spareInventory;
+        if ((buyQuantity * buyPrice) > cash) {
+            buyQuantity = (int) Math.floor(cash / buyPrice);
+        }
+        return buyQuantity;
+    }
 }

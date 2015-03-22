@@ -6,49 +6,48 @@ public class TradeableItem {
 
     public final Item item;
 
-    public String buyFrom;
-    public int buyQuantity;
-    public double buyPrice;
+    public final String buyFrom;
+    public final Integer buyQuantity;
+    public final Double buyPrice;
 
-    public String sellFrom;
-    public int sellQuantity;
-    public double sellPrice;
+    public final String sellFrom;
+    public final Integer sellQuantity;
+    public final Double sellPrice;
 
-    public double roi;
+    public final Double roi;
 
-    public TradeableItem(Item item, String key1, Integer e1Inventory, Double e1Price, String key2, Integer e2Inventory, Double e2Price) {
+    public TradeableItem(Item item) {
         this.item = item;
-
-        if (e1Inventory == 0) {
-            buy(key2, e2Inventory, e2Price);
-            sell(key1, e1Inventory, e1Price);
-        } else if (e2Inventory == 0) {
-            sell(key2, e2Inventory, e2Price);
-            buy(key1, e1Inventory, e1Price);
-        } else if (e1Price < e2Price) {
-            sell(key2, e2Inventory, e2Price);
-            buy(key1, e1Inventory, e1Price);
-        } else {
-            buy(key2, e2Inventory, e2Price);
-            sell(key1, e1Inventory, e1Price);
-        }
-        calculateRoi();
+        this.buyFrom = null;
+        this.buyQuantity = null;
+        this.buyPrice = null;
+        this.sellFrom = null;
+        this.sellQuantity = null;
+        this.sellPrice = null;
+        this.roi = null;
     }
 
-    private void buy(String buyFrom, Integer buyQuantity, Double buyPrice) {
+    private TradeableItem(Item item, String buyFrom, Integer buyQuantity, Double buyPrice, String sellFrom, Integer sellQuantity, Double sellPrice, Double roi) {
+        this.item = item;
         this.buyFrom = buyFrom;
         this.buyQuantity = buyQuantity;
         this.buyPrice = buyPrice;
-    }
-
-    private void sell(String sellFrom, Integer sellQuantity, Double sellPrice) {
         this.sellFrom = sellFrom;
         this.sellQuantity = sellQuantity;
         this.sellPrice = sellPrice;
+        if (sellPrice != null && buyPrice != null) {
+            this.roi = sellPrice / buyPrice;
+        } else {
+            this.roi = 0d;
+        }
     }
 
-    private void calculateRoi() {
-        roi = sellPrice / buyPrice;
+    public TradeableItem withBuy(String buyFrom, Integer buyQuantity, Double buyPrice) {
+        return new TradeableItem(item, buyFrom, buyQuantity, buyPrice, sellFrom, sellQuantity, sellPrice, roi);
+    }
+
+    public TradeableItem withSell(String sellFrom, Integer sellQuantity, Double sellPrice) {
+        return new TradeableItem(item, buyFrom, buyQuantity, buyPrice, sellFrom, sellQuantity, sellPrice, roi);
     }
 
     @Override
